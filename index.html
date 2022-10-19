@@ -1,0 +1,549 @@
+<link href="OSMBuildings.css" rel="stylesheet">
+<script src="OSMBuildings.js"></script>
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script src="./ekinciogludb/luisenring.txt"></script>
+<script src="./ekinciogludb/innenstadt.txt"></script>
+<script src="./ekinciogludb/collini.txt"></script>
+<script src="./ekinciogludb/collini2.txt"></script>
+
+<style>
+    .control {
+        position: absolute;
+        left: 10px;
+        /* This might need to be tweaked */
+        z-index: 1000;
+    }
+
+    .control.tilt {
+        top: 10px;
+        /* This might need to be tweaked */
+    }
+
+    .control.rotation {
+        top: 10px;
+        left: 110px;
+        /* This might need to be tweaked */
+    }
+
+    .control.zoom {
+        top: 10px;
+        left: 210px;
+        /* This might need to be tweaked */
+    }
+
+    .control.zoom button {
+        font-weight: normal;
+    }
+
+    .control button {
+        width: 30px;
+        height: 30px;
+        margin: 15px 0 0 15px;
+        border: 1px solid #999999;
+        background: #ffffff;
+        opacity: 0.6;
+        border-radius: 5px;
+        box-shadow: 0 0 5px #666666;
+        font-weight: bold;
+        text-align: center;
+    }
+
+    .control button:hover {
+        opacity: 1;
+        cursor: pointer;
+    }
+	
+	#label {
+	  //width:100px;
+	  height:20px;
+	  position:absolute;
+	  z-Index:10;
+	  background-color: black;
+	  color: white;
+	  padding-top: 4px;
+	  text-align: center;
+	}
+	
+</style>
+
+<body style="background-color: white;">
+
+
+
+
+<div id="map" style="height: 400px; width: 800px"></div>
+
+<div class="control tilt">
+    <button class="dec">↑</button>
+    <button class="inc">↓</button>  
+</div>
+    
+<div class="control rotation">
+    <button class="inc">↶</button>
+    <button class="dec">↷</button>
+</div>
+    
+<div class="control zoom">
+    <button class="dec">-</button>
+    <button class="inc">+</button>
+</div>
+
+<div style="margin-top: 50px;">
+    <button onclick="rotate()">Rotate</button>
+</div>
+
+<div style="margin-top: 50px;">
+    <button onclick="createAfterMarker()">Create random pin-marker in Mannheim</button>
+</div>
+
+<!-- <div id="label">MVV</div> -->
+<!-- <div id="plotly-div"></div> -->
+
+
+<!-- <div class="control zoom">
+    <button class="dec">↻</button>
+</div> -->
+
+</body>
+
+<script>
+
+function lon2tile(lon,zoom) { return (Math.floor((lon+180)/360*Math.pow(2,zoom))); }
+function lat2tile(lat,zoom)  { return (Math.floor((1-Math.log(Math.tan(lat*Math.PI/180) + 1/Math.cos(lat*Math.PI/180))/Math.PI)/2 *Math.pow(2,zoom))); }
+
+function getGeoJsonTile(lati, longi, zoomi){
+	return 'https://data.osmbuildings.org/0.2/anonymous/tile/' + zoomi.toString() + '/' + lon2tile(longi,zoomi).toString() + '/' + lat2tile(lati,zoomi).toString() + '.json';
+}
+
+//MVV
+console.log(getGeoJsonTile(49.49445494673782, 8.467420742340897, 15));
+
+//Innenstadt unten
+console.log(getGeoJsonTile(49.487147703472, 8.466285805861459, 15));
+
+//Collini Center
+console.log(getGeoJsonTile(49.49279989904496, 8.47434957675789, 15));
+
+
+let rotation = 0;
+
+function rotate() {
+    osmb.setRotation(rotation);
+    rotation = (rotation + 0.05) % 360;
+    requestAnimationFrame(rotate);
+}
+
+function stopRotation() {
+    cancelAnimationFrame(null);
+}
+
+// OSMBuildings.js line 1497 for default color of buildings, was previously rgb(220, 210, 200)
+// map
+var osmb = new OSMBuildings({
+    container: 'map',
+    position: {
+        latitude: 49.49445494673782,
+        longitude: 8.467420742340897
+    },
+    zoom: 16,
+    minZoom: 15,
+    maxZoom: 20,
+    fastMode: false,
+	state: true,
+    // tilt limit can be changed with "MAX_TILT" on line 1493 in OSMBuildings.js, but not advised by developer because of infractructure limits
+    tilt: 45,
+    // attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>, &copy; <a href="https://carto.com/attributions">CARTO</a>'
+    attribution: 'Daten von <a href="https://www.openstreetmap.org/">OpenStreetMap</a> - Veröffentlicht unter <a href="https://opendatacommons.org/licenses/odbl/">ODbL</a> &copy; 3D <a href="https://osmbuildings.org/copyright/">OSM Buildings</a>'
+});
+
+/* // CUSTOM EFFICIENT MODE
+	osmb.on('zoom', e => {
+		if(osmb.getZoom() < 15.5 && tiles != 0){
+			tiles.destroy();
+			tiles = 0;
+			console.log('destroyed buildings');
+			return;
+		}
+		
+		if(osmb.getZoom() >= 15.5 && tiles == 0){
+			tiles = osmb.addGeoJSONTiles('https://{s}.data.osmbuildings.org/0.2/anonymous/tile/{z}/{x}/{y}.json');
+			console.log('created buildings');
+			return;
+		}
+	});*/
+
+// CARTO: https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png
+// OSM: https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
+// OSM_DE: https://{s}.tile.openstreetmap.de/{z}/{x}/{y}.png
+// var testTiles = osmb.addGeoJSONTiles('https://{s}.data.osmbuildings.org/0.2/anonymous/tile/{z}/{x}/{y}.json');
+
+
+
+
+//osmb.addGeoJSON('https://ekincioglu.github.io/luisenring.json');
+osmb.addGeoJSON(innenstadt);
+osmb.addGeoJSON(luisenring);
+osmb.addGeoJSON(collini);
+osmb.addGeoJSON(collini2);
+
+osmb.on('loadfeature', function(feature) {
+  feature.detail.properties.color='red';
+  return feature;
+});
+
+// luisenringTiles.color = 'rgba(0, 0, 0, 1)';
+osmb.addMapTiles('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png');
+
+
+/*
+features.properties.color = '#474747';
+features.properties.roofColor = '#474747';
+*/
+
+// control buttons
+var controlButtons = document.querySelectorAll('.control button');
+
+for (var i = 0; i < controlButtons.length; i++) {
+    controlButtons[i].addEventListener('click', function(e) {
+        var button = this;
+        var parentClassList = button.parentNode.classList;
+        var direction = button.classList.contains('inc') ? 1 : -1;
+        var increment;
+        var property;
+
+        if (parentClassList.contains('tilt')) {
+            property = 'Tilt';
+            increment = direction * 10;
+        }
+        if (parentClassList.contains('rotation')) {
+            property = 'Rotation';
+            increment = direction * 10;
+        }
+        if (parentClassList.contains('zoom')) {
+            property = 'Zoom';
+            increment = direction * 1;
+        }
+        if (property) {
+            osmb['set' + property](osmb['get' + property]() + increment);
+        }
+    });
+}
+let onlineCube = `https://gist.githubusercontent.com/noonat/1131091/raw/3ef186720b1bb6e704c46aebf57a42677d1638af/cube.obj`;
+let newMarker277 = `https://raw.githubusercontent.com/ekincioglu/ekincioglu.github.io/master/newmarker.obj`;
+let zombie = `https://raw.githubusercontent.com/dkniffin/osm-game/master/app/assets/models/Zombie_low.obj`;
+//osmb.addOBJ(`https://raw.githubusercontent.com/ekincioglu/ekincioglu.github.io/master/pin.obj`, { latitude: 49.49591833051998, longitude: 8.468504355145525 }, { id: "my_object_1", color: 'magenta', scale: 10, altitude: 0 });
+//osmb.addOBJ(`${location.protocol}//${location.hostname}/${location.pathname}/cube.obj`, { latitude: 49.49591833051998, longitude: 8.468504355145525 }, { id: "5222", color: 'purple', altitude: 0, scale: 1, rotation: 45 });
+
+function set3DMarker(osmb, latitude, longitude, objectId) {
+    osmb.addOBJ(`https://raw.githubusercontent.com/ekincioglu/ekincioglu.github.io/master/pin.obj`, {
+        latitude: latitude,
+        longitude: longitude
+    }, {
+        id: objectId,
+        color: 'red',
+        scale: 20,
+        altitude: 0
+    });
+	
+	//label
+	var label = document.getElementById(objectId);
+	osmb.on('change', function() {
+    var pos = osmb.project(latitude, longitude, 0);
+		label.style.left = Math.round(pos.x) + 'px';
+		label.style.top = Math.round(pos.y) + 'px';
+	});
+}
+
+// diff 0.0054387235373951626
+function randomMannheimLat() {
+    return (Math.random() * (49.50881551580205 - 49.50337679226465) + 49.50337679226465).toFixed(15)
+}
+
+function getRandomIDName() {
+    return (Math.random() * (99999999999 - 10000000000) + 10000000000).toString();
+}
+
+// diff 0.10111196887268115
+function randomMannheimLong() {
+    return (Math.random() * (8.521990644357073 - 8.420878675484392) + 8.420878675484392).toFixed(15)
+}
+
+function createAfterMarker(counter) {
+	// testTiles.destroy();
+    set3DMarker(osmb, randomMannheimLat(), randomMannheimLong(), getRandomIDName());
+}
+
+function getRandomColor() {
+  var letters = '0123456789ABCDEF';
+  var color = '#';
+  for (var i = 0; i < 6; i++) {
+    color += letters[Math.floor(Math.random() * 16)];
+  }
+  return color;
+}
+
+
+/*for(i = 0; i < 10; i++){
+	set3DMarker(osmb, randomMannheimLat(), randomMannheimLong(), ('Marker ' + i.toString()));
+}*/
+
+
+// https://osmbuildings.github.io/OSMBuildings/tutorial-Highlighting%20Buildings.html
+// on pointer up
+
+/*
+osmb.on('pointerup', e => {
+    // if none, remove any previous selection and return
+    if (!e.features) {
+        osmb.highlight(feature => {})
+    }
+
+    // store id's from seleted items...
+	const featureIDList = e.features.map(feature => feature.id);
+    
+
+    // ...then is is faster: set highlight color for matching features
+    osmb.highlight(feature => {
+        if (featureIDList.indexOf(feature.id) > -1) {
+            return getRandomColor();
+        }
+    });
+});
+*/
+
+
+function setMarkerWithLabel(text, id_name, lat, lon, alt){
+	var labelDiv = document.createElement('div');
+	labelDiv.setAttribute("id", id_name);
+	labelDiv.setAttribute("style", "height:20px; position:absolute; z-Index:10; background-color: black; color: white; padding-top: 4px; text-align: center;");
+	labelDiv.innerText = text;
+	if(document.body != null){
+		document.body.appendChild(labelDiv);
+	}
+	labelDiv.style.visibility = "hidden";
+	// var label = document.getElementById(id_name);
+	osmb.on('change', function() {
+		var pos = osmb.project(lat, lon, alt);
+		labelDiv.style.left = Math.round(pos.x) + 'px';
+		labelDiv.style.top = Math.round(pos.y) + 'px';
+		//console.log("LEFT:" + labelDiv.style.left + " " + "TOP:" + labelDiv.style.top);
+		
+		if(Math.round(pos.x) > 700 || Math.round(pos.y) > 350 || Math.round(pos.x) < 0 || Math.round(pos.y) < 0){
+			labelDiv.style.visibility = "hidden";
+		} else {
+			labelDiv.style.visibility = "visible";
+		};
+	});
+}
+
+/*for(i = 0; i < 5; i++){
+	setMarkerWithLabel('Beispiel', getRandomIDName(), randomMannheimLat(), randomMannheimLong(), 75);
+}*/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*
+function getCol(ysrc, yref, rev) {
+    var retArr = [];
+    for (i = 0; i < ysrc.length; i++) {
+        if (rev === 0) {
+            if (yref[i] === 120) {
+                console.log(ysrc[i] + '\t' + yref[i]);
+            }
+            if (ysrc[i] < yref[i]) {
+                retArr.push('red');
+            } else {
+                retArr.push('green');
+            }
+        } else {
+            if (ysrc[i] < yref[i]) {
+                retArr.push('green');
+            } else {
+                retArr.push('red');
+            }
+        }
+    }
+    return retArr;
+}
+
+var raw_data = {};
+data_inp = {
+    t1: {
+        x: ['2015-11-01', '2015-12-01', '2016-01-01', '2016-02-01', '2016-03-01', '2016-04-01', '2016-05-01', '2016-06-01', '2016-07-01', '2016-08-01', '2016-09-01', '2016-10-01', '2016-11-01', '2016-12-01', '2017-01-01', '2017-02-01', '2017-03-01', '2017-04-01', '2017-05-01', '2017-06-01', '2017-07-01', '2017-08-01', '2017-09-01', '2017-10-01', '2017-11-01', '2017-12-01', '2018-01-01', '2018-02-01', '2018-03-01', '2018-04-01', '2018-05-01', '2018-06-01', '2018-07-01', '2018-08-01', '2018-09-01', '2018-10-01'],
+        y: [98.56506055, 173.6163037, 30.07182333, 104.3968154, 10.47166028, 25.0877191, 117.588509, 71.32255624, 122.2049817, 29.90836259, 144.7100545, 111.6080726, 145.0987503, 153.5127679, 108.99659106, 183.2666519, 68.09619938, 157.3466985, 36.53806494, 124.3070313, 164.6216515, 67.33683889, 170.9693709, 7.381564769, 97.15908115, 36.87237902, 37.49057898, 199.5228114, 125.8479425, 186.2255959, 58.88032189, 117.8417597, 15.05245551, 186.3317178, 129.503475814, 23.55166776]
+    },
+    t2: {
+        y: ['100', '100', '100', '100', '100', '100', '100', '100', '100', '100', '100', '100', '100', '120', '120', '120', '100', '100', '100', '100', '100', '100', '100', '60', '60', '60', '100', '100', '100', '100', '100', '100', '100', '100', '100', '100']
+    }
+}
+trace1 = {
+    x: data_inp['t1']['x'],
+    y: data_inp['t1']['y'],
+    connectgaps: false,
+    fill: 'tozeroy',
+    fillcolor: 'rgba(0,123,255, 0.0)',
+    hoveron: 'points',
+    line: {
+        width: 1,
+        dash: '0px 5000px'
+    },
+    marker: {
+        autocolorscale: false,
+        cauto: true,
+        cmax: 200,
+        cmin: 0,
+        color: getCol(data_inp['t1']['y'], data_inp['t2']['y'], 0),
+        opacity: 0.8,
+        size: 10,
+      // colorscale:  [
+      //  	[0, 'rgb(255, 0, 0)'],
+      // 	[0.5, 'rgb(255, 0, 0)'],
+      //  	[0.5, 'rgb(20, 185, 10)'],
+      //  	[1.0, 'rgb(20, 185, 10)']],
+      //
+        reversescale: false
+    },
+    mode: 'markers+lines',
+    name: 'Index',
+    text: data_inp['y'],
+    type: 'scatter'
+};
+trace2 = {
+    x: data_inp['t1']['x'],
+    y: data_inp['t2']['y'],
+    fill: 'none',
+    line: {
+        color: 'rgb(225,0,0)',
+        dash: 'dot',
+        width: 1,
+        shape: 'hv',
+    },
+    mode: 'lines',
+    name: 'Target',
+    type: 'scatter'
+};
+data = [trace1, trace2];
+layout = {
+    autosize: true,
+    hovermode: 'closest',
+    showlegend: false,
+    xaxis: {
+        anchor: 'y',
+        autorange: true,
+        dtick: 'M1',
+        linewidth: 1,
+        nticks: 12,
+        rangeselector: {
+            activecolor: 'rgb(209, 207, 207)',
+            bgcolor: 'rgb(235, 235, 235)',
+            buttons: [{
+                    label: 'All',
+                    step: 'all'
+                },
+                {
+                    count: 1,
+                    label: '1Y',
+                    step: 'year',
+                    stepmode: 'backward'
+                },
+                {
+                    count: 6,
+                    label: '6M',
+                    step: 'month',
+                    stepmode: 'backward'
+                }
+            ],
+            visible: true
+        },
+        showline: true,
+        tickmode: 'auto',
+        type: 'date'
+    },
+    yaxis: {
+        autorange: false,
+        domain: [0, 1],
+        dtick: 20,
+        nticks: 11,
+        range: [Plotly.d3.min(data_inp.t1.y), Plotly.d3.max(data_inp.t1.y) * 1.1],
+        showline: true,
+        tick0: 0,
+        type: 'linear'
+    }
+};
+
+var options_details = {
+    scrollZoom: true,
+    showLink: false,
+    displaylogo: false,
+    modeBarButtonsToRemove: ['sendDataToCloud', 'autoScale2d', 'hoverClosestCartesian', 'hoverCompareCartesian', 'lasso2d', 'select2d'],
+    displaylogo: false,
+    displayModeBar: false,
+    showTips: false
+};
+Plotly.plot('plotly-div', data, layout, options_details).then(function() {
+    return Plotly.animate('plotly-div', [{
+        data: [{
+            'line.dash': '5000px 0px'
+        }]
+    }], {
+        frame: {
+            duration: 2000,
+            redraw: false
+        },
+        transition: {
+            duration: 5000,
+            easing: 'cubic-in-out'
+        }
+    });
+});*/
+
+
+
+
+
+</script>
+
+
+
+
+
+
+
